@@ -13,18 +13,27 @@ def parse(packet: bytes) -> dict:
         "prtcl":  packet[9],
         "hcksum": packet[10:12],
         "srcip":  packet[12:16],
-        "dstip":  packet[16:20],
-        "opts":   packet[20:]
+        "dstip":  packet[16:20]
     }
     if parpack['ver'] != 4:  # IP version is not 4
         print(f'\nRecived \33[1mIPv{parpack["ver"]}\33[0m packet, ignoring...')
         return
 
-    ihl = int.from_bytes(parpack['len'], 'big')
-    if ihl != len(packet):
-        print(f"\n\33[1m\33[31mError:\33[0m Packet header said it's \33[1m{ihl}\33[0m bytes long "
-              f"but it's acutally \33[1m{len(packet)}\33[0m bytes long!\n\33[1mCurpted packet.")
+    plen = int.from_bytes(parpack['len'], 'big')  # Packet length
+    if plen != len(packet):
+        print(f"\n\33[1m\33[31mError:\33[0m Packet header said it's \33[1m{plen}\33[0m"
+              f" bytes long but it's acutally \33[1m{len(packet)}\33[0m bytes long!"
+              "\n\33[1m1mCorrupted packet.\33[0m")
         return
 
+    ihl = parpack['IHL']  # IP header length
+    if ihl < 5:
+        print(f"\n\33[1m\33[31mError:\33[0m Header length {ihl*4}b is smaller than the "
+              "minimum of 20 bytes.\n\33[1mCorrupted packet.\33[0m")
+        return
+
+    # Now that we know header length, we can calc what's the options and what's the data
+    parpack['opts'] = packet[20:ihl*4]  # Options go to the end of the header
+    parpack['data'] = packet[ihl*4:]  # And the rest is the data
     return parpack
 

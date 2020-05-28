@@ -26,8 +26,8 @@ try:
               f'\33[35m{".".join([str(x) for x in dbuf["srcip"]])}\33[0m'
               f' \33[1mprotocol:\33[0m {dbuf["prtcl"]}(\33[35m{prtcls[dbuf["prtcl"]]}\33[0m) '
               f'\33[1mttl:\33[0m \33[35m{dbuf["TTL"]}\33[0m')  # print packet info
-
-        length = int.from_bytes(dbuf['len'], 'big')
+        print(f'\33[1mData [{len(dbuf["data"])}b] (Handled by a higher level protocol):'
+              f'\33[0m {dbuf["data"].hex()}')
 
 
 except Exception as e:
