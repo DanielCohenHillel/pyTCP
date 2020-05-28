@@ -16,7 +16,8 @@ def parse(packet: bytes) -> dict:
         "dstip":  packet[16:20]
     }
     if parpack['ver'] != 4:  # IP version is not 4
-        print(f'\nRecived \33[1mIPv{parpack["ver"]}\33[0m packet, ignoring...')
+        print(
+            f'\n\33[1mRecived \33[35mIPv{parpack["ver"]}\33[39m packet, ignoring...\33[0m')
         return
 
     plen = int.from_bytes(parpack['len'], 'big')  # Packet length

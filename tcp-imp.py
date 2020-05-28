@@ -1,6 +1,7 @@
 import pytuntap as tt
 import ipv4parse as ip4p
-from collections.abc import Iterable
+import sys
+# from collections.abc import Iterable
 
 # Table of protocols number
 prtcls = []
@@ -14,10 +15,18 @@ tun = tt.TunTap('Tun', 'tun2')
 tun.config('192.168.0.123', '255.255.255.0')
 try:
     for _ in range(100):
-        # print(f'\n\33[1m{len(buff)}\33[0m -> {val_arr}')
+        verbose = '-v' in sys.argv
+        surpress = '-s' in sys.argv
+
         buff = tun.read(512)
         dbuf = ip4p.parse(buff)
         if dbuf is None:  # Not a valid IPv4 packet
+            continue
+        if not verbose and dbuf['prtcl'] != 6:  # TCP protocol
+            if surpress:
+                continue
+            print(f'\n\33[1mRecived \33[35m{prtcls[dbuf["prtcl"]]}\33[39m packet,'
+                  ' ignoring...\33[0m (you can use -v to display all IPv4 packets)')
             continue
 
         # Print number bytes of data
@@ -26,7 +35,7 @@ try:
               f'\33[35m{".".join([str(x) for x in dbuf["srcip"]])}\33[0m'
               f' \33[1mprotocol:\33[0m {dbuf["prtcl"]}(\33[35m{prtcls[dbuf["prtcl"]]}\33[0m) '
               f'\33[1mttl:\33[0m \33[35m{dbuf["TTL"]}\33[0m')  # print packet info
-        print(f'\33[1mData [{len(dbuf["data"])}b] (Handled by a higher level protocol):'
+        print(f'\33[1mData [{len(dbuf["data"])}b]:'
               f'\33[0m {dbuf["data"].hex()}')
 
 
