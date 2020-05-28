@@ -23,6 +23,9 @@ try:
               f' \33[1mprotocol:\33[0m {dbuf["prtcl"]}(\33[35m{prtcls[dbuf["prtcl"]]}\33[0m) '
               f'\33[1mttl:\33[0m \33[35m{dbuf["TTL"]}\33[0m')
 
+        le = int.from_bytes(dbuf['len'], 'big')
+        print(f'{le}  | {len(buff)}')
+
         # for key, value in dbuf.items():
         #     print(f'\33[1m{key}: \33[0m'
         #           f'{".".join([str(x) for x in value]) if isinstance(value, Iterable) else value}')

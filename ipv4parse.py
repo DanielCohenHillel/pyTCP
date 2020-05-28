@@ -1,7 +1,9 @@
 def parse(packet) -> dict:
     if len(packet) < 20:
-        print('Not a valid IPv4 packet')
+        print('Not a valid IP packet')
         return
+    if packet[0] >> 4 != 4:  # IP version is not 4
+        print(f'\nRecived \33[1mIPv{packet[0]>>4}\33[0m packet, ignoring...')
     parsed = {
         "ver":    packet[0],
         "typ":    packet[1],
