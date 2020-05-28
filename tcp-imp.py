@@ -17,19 +17,19 @@ try:
         # print(f'\n\33[1m{len(buff)}\33[0m -> {val_arr}')
         buff = tun.read(512)
         dbuf = ip4p.parse(buff)
+        if dbuf is None:
+            continue
+
+        # Super mega pretty print
+        # Print number bytes of data
         print(f'\n\33[1m\33[32m{len(buff)}b of data\33[0m')
         print(f'\33[1mIPv4:\33[0m \33[35m{".".join([str(x) for x in dbuf["dstip"]])}\33[0m -> '
               f'\33[35m{".".join([str(x) for x in dbuf["srcip"]])}\33[0m'
               f' \33[1mprotocol:\33[0m {dbuf["prtcl"]}(\33[35m{prtcls[dbuf["prtcl"]]}\33[0m) '
-              f'\33[1mttl:\33[0m \33[35m{dbuf["TTL"]}\33[0m')
+              f'\33[1mttl:\33[0m \33[35m{dbuf["TTL"]}\33[0m')  # print packet info
 
         le = int.from_bytes(dbuf['len'], 'big')
-        print(f'{le}  | {len(buff)}')
 
-        # for key, value in dbuf.items():
-        #     print(f'\33[1m{key}: \33[0m'
-        #           f'{".".join([str(x) for x in value]) if isinstance(value, Iterable) else value}')
-        # buff_arr = [str(i) for i in buff]
 
 except Exception as e:
     print('Exiting...\n', e)
