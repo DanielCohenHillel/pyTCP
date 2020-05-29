@@ -4,6 +4,7 @@ The TCP connection object
 '''
 from enum import Enum
 import abc
+import logging
 
 
 class State(Enum):
@@ -49,7 +50,7 @@ class TCBase(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def stat(self):
+    def status(self):
         pass
 
     @abc.abstractmethod
@@ -65,16 +66,19 @@ class TCBase(abc.ABC):
 
 
 class TCB(TCBase):
-    def __init__(self, quad):
-        self.state = State.LISTEN
-        self.quad = quad
+    def __init__(self):
+        self.state = State.CLOSED
 
-    def open(self):
+    def open(self, quad):
         '''
-        CLOSED -> LISTE <---------------------- *
+        CLOSED -> LISTEN <---------------------- *
         CLOSED -> SYN_SENT
         '''
-        pass
+        if self.state == State.CLOSED:
+            pass
+        if self.state == State.LISTEN:
+            pass
+        print("\33[31m\33[1mError:\33[0m\33[1m connection already exists.")
 
     def send(self):
         '''
@@ -95,7 +99,9 @@ class TCB(TCBase):
     def recv(self):
         '''
         LISTEN ----> SYN_RCVD <---------------- *
+        SYN_SENT --> ESTAB <------------------- *
         SYN_RCVD --> ESTAB <------------------- *
+        SYN_SENT --> SYN_RCVD
         ESTAB -----> CLOSE_WAIT
         FIN_WAIT1 -> FIN_WAIT2
         FIN_WAIT1 -> CLOSING
@@ -103,7 +109,13 @@ class TCB(TCBase):
         CLOSING ---> TIME_WAIT
         LAST_ACK --> CLOSED
         '''
-        pass
+        if self.state == State.CLOSED:
+            logging.log(40,
+                        "\33[31m\33[1mError:\33[0m connection doesn't exist.")
+        if self.state in [State.LISTEN, State.SYN_SENT, State.SYN_RCVD]:
+            pass  # TODO: Queue for processing. (read from tun device)
+        if self.state in [State.ESTAB, State.FIN_WAIT1, State.FIN_WAIT2]:
+            pass  # TODO: Queue for processing.
 
     def close(self):
         '''
@@ -115,8 +127,8 @@ class TCB(TCBase):
         '''
         pass
 
-    def stat(self):
-        pass
+    def status(self):
+        return self.state
 
     def abort(self):
         pass
@@ -125,4 +137,5 @@ class TCB(TCBase):
         pass
 
 
-# c = TCB()
+c = TCB()
+c.open(1)

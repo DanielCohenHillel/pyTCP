@@ -1,18 +1,24 @@
 # pyTCP
-Low level immplementation of the TCP protocol in python using TunTap virtual network interface on linux.
+Low level implementation of the TCP protocol in python using TunTap virtual network interface on linux.
 
 **Based on:**
   * The official TCP specifications [RFC 793](https://tools.ietf.org/html/rfc793#page-19)
   * [This](https://github.com/jonhoo/rust-tcp) great repository and video series
-  * [This](https://github.com/gonewind73/pytuntap) nice, but unfortunatly not maintained package
+  * [This](https://github.com/gonewind73/pytuntap) nice, but unfortunately not maintained package
 
-**Usefull links:**
+**Useful links:**
   * [TCP on Wikipedia](https://en.wikipedia.org/wiki/Transmission_Control_Protocol)
   * [IPv4 on Wikipedia](https://en.wikipedia.org/wiki/IPv4)
   * Official IP specifications [RFC 760](https://tools.ietf.org/html/rfc760)
   * ICMP specifications [RFC 792](https://tools.ietf.org/html/rfc792)
 
-I always need this on hand so I put it here for convinience
+**Note:** The RFC 793 specification was written without object oriented programming in mind. Although I
+*can* code it in python I really don't *want* to. This is why this implementation is more 
+*in the spirit* of RFC 793 rather than a real big boy full on implementation. So, for example,
+a connection is an object rather than an element in the TCB (and the TCB should be accessed 
+with a pointer to it).
+
+I always need this on hand so I put it here for convenience
 
 **State flow diagram**
 ```
