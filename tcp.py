@@ -71,7 +71,7 @@ class TCB(TCBase):
 
     def open(self):
         '''
-        CLOSED -> LISTEN
+        CLOSED -> LISTE <---------------------- *
         CLOSED -> SYN_SENT
         '''
         pass
@@ -79,10 +79,10 @@ class TCB(TCBase):
     def send(self):
         '''
         CLOSED -----> SYN_SENT
-        LISTEN -----> SYN_SENT
-        LISTEN -----> SYN_RCVD
+        LISTEN -----> SYN_SENT <--------------- *
+        LISTEN -----> SYN_RCVD <--------------- *
         SYN_SENT ---> SYN_RCVD
-        SYN_SENT ---> ESTAB
+        SYN_SENT ---> ESTAB <------------------ *
         SYN_RCVD ---> FIN_WAIT1
         ESTAB ------> CLOSE_WAIT
         ESTAB ------> FIN_WAIT1
@@ -92,10 +92,10 @@ class TCB(TCBase):
         '''
         pass
 
-    def recv(self):  #
+    def recv(self):
         '''
-        LISTEN ----> SYN_RCVD
-        SYN_RCVD --> ESTAB
+        LISTEN ----> SYN_RCVD <---------------- *
+        SYN_RCVD --> ESTAB <------------------- *
         ESTAB -----> CLOSE_WAIT
         FIN_WAIT1 -> FIN_WAIT2
         FIN_WAIT1 -> CLOSING
