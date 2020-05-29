@@ -1,4 +1,5 @@
-def parse(packet: bytes) -> dict:
+
+def ip(packet: bytes) -> dict:
     if len(packet) < 20:  # Packet can't be smaller than minimum header size
         print('Not a valid IP packet')
         return
@@ -38,3 +39,21 @@ def parse(packet: bytes) -> dict:
     parpack['data'] = packet[ihl*4:]  # And the rest is the data
     return parpack
 
+
+def parse(packet):
+    parpack = {
+        'src_port': packet[0:2],
+        'dst_port': packet[2:4],
+        'seq_num': packet[4:8],
+        'ack_num': packet[8:12],
+        'dat_off': packet[12] >> 4,
+        'rsrvd': packet[12] & 0b1111,
+        'flags': packet[13],  # Does not include NS flag!!
+        'win_size': packet[14:16],
+        'chk_sum': packet[16:18],
+        'urg_pnt': packet[18:20]
+    }
+    dat_off = parpack['dat_off']*4
+    parpack['opts'] = packet[20:dat_off]
+    parpack['data'] = packet[dat_off:]
+    return parpack

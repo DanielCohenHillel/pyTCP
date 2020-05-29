@@ -1,7 +1,7 @@
 import pytuntap as tt
-import ipv4parse as ip4p
+import parse
 import sys
-import tcp
+# import tcp
 import utils
 # from collections.abc import Iterable
 
@@ -14,7 +14,7 @@ try:
         surpress = '-s' in sys.argv
 
         buff = tun.read(512)
-        dbuf = ip4p.parse(buff)
+        dbuf = parse.ip(buff)
         if dbuf is None:  # Not a valid IPv4 packet
             continue
         if not verbose and dbuf['prtcl'] != 6:  # TCP protocol
@@ -25,7 +25,7 @@ try:
             continue
 
         data = dbuf['data']
-        tcp_dat = tcp.parse(data)
+        tcp_dat = parse.ip(data)
         utils.print_pac(dbuf, tcp_dat)
 
 
