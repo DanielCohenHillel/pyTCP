@@ -1,20 +1,15 @@
 import pytuntap as tt
 import ipv4parse as ip4p
 import sys
+import tcp
+import utils
 # from collections.abc import Iterable
 
-# Table of protocols number
-prtcls = []
-with open('protocol-numbers-1.csv') as file:
-    for row in file:
-        spl = row.split(',')
-        if isinstance(spl[0], str) and spl[0].isdigit():
-            prtcls.append(spl[1])
 
 tun = tt.TunTap('Tun', 'tun2')
 tun.config('192.168.0.123', '255.255.255.0')
 try:
-    for _ in range(100):
+    for _ in range(500):
         verbose = '-v' in sys.argv
         surpress = '-s' in sys.argv
 
@@ -25,18 +20,13 @@ try:
         if not verbose and dbuf['prtcl'] != 6:  # TCP protocol
             if surpress:
                 continue
-            print(f'\n\33[1mRecived \33[35m{prtcls[dbuf["prtcl"]]}\33[39m packet,'
+            print(f'\n\33[1mRecived \33[35m{utils.prtcls[dbuf["prtcl"]]}\33[39m packet,'
                   ' ignoring...\33[0m (you can use -v to display all IPv4 packets)')
             continue
 
-        # Print number bytes of data
-        print(f'\n\33[1m\33[32m{len(buff)}b of data\33[0m')
-        print(f'\33[1mIPv4:\33[0m \33[35m{".".join([str(x) for x in dbuf["dstip"]])}\33[0m → '
-              f'\33[35m{".".join([str(x) for x in dbuf["srcip"]])}\33[0m'
-              f' \33[1mprotocol:\33[0m {dbuf["prtcl"]}(\33[35m{prtcls[dbuf["prtcl"]]}\33[0m) '
-              f'\33[1mttl:\33[0m \33[35m{dbuf["TTL"]}\33[0m')  # print packet info
-        print(f'\33[1mData [{len(dbuf["data"])}b]:'
-              f'\33[0m {dbuf["data"].hex()}')
+        data = dbuf['data']
+        tcp_dat = tcp.parse(data)
+        utils.print_pac(dbuf, tcp_dat)
 
 
 except Exception as e:
@@ -45,3 +35,4 @@ except Exception as e:
 finally:
     print('\nExiting but its good :)')
     tun.close()
+

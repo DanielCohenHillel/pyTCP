@@ -7,17 +7,42 @@ import abc
 
 
 class State(Enum):
-    CLOSED = 0
-    LISTEN = 1
-    ESTAB = 2
-    SYN_RECVD = 3
-    SYN_SENT = 4
-    CLOSE_WAIT = 5
-    LAST_ACK = 6
-    FIN_WAIT1 = 7
-    FIN_WAIT2 = 8
-    CLOSING = 9
-    TIME_WAIT = 10
+    CLOSED = 1
+    LISTEN = 2
+    ESTAB = 3
+    SYN_RECVD = 4
+    SYN_SENT = 5
+    CLOSE_WAIT = 6
+    LAST_ACK = 7
+    FIN_WAIT1 = 8
+    FIN_WAIT2 = 9
+    CLOSING = 10
+    TIME_WAIT = 11
+
+
+class quad:
+    def __init__(self, src_ip, src_port, dst_ip, dst_port):
+        self.src = (src_ip, src_port)
+        self.dst = (dst_ip, dst_port)
+
+
+def parse(packet):
+    parpack = {
+        'src_port': packet[0:2],
+        'dst_port': packet[2:4],
+        'seq_num': packet[4:8],
+        'ack_num': packet[8:12],
+        'dat_off': packet[12] >> 4,
+        'rsrvd': packet[12] & 0b1111,
+        'flags': packet[13],  # Does not include NS flag!!
+        'win_size': packet[14:16],
+        'chk_sum': packet[16:18],
+        'urg_pnt': packet[18:20]
+    }
+    dat_off = parpack['dat_off']*4
+    parpack['opts'] = packet[20:dat_off]
+    parpack['data'] = packet[dat_off:]
+    return parpack
 
 
 class TCBase(abc.ABC):
@@ -35,7 +60,7 @@ class TCBase(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def receive(self):
+    def recv(self):
         pass
 
     @abc.abstractmethod
@@ -43,7 +68,7 @@ class TCBase(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def status(self):
+    def stat(self):
         pass
 
     @abc.abstractmethod
@@ -60,7 +85,7 @@ class TCBase(abc.ABC):
 
 class TCB(TCBase):
     def __init__(self):
-        pass
+        self.state = State.CLOSED
 
     def open(self):
         pass
@@ -68,13 +93,13 @@ class TCB(TCBase):
     def send(self):
         pass
 
-    def receive(self):
+    def recv(self):
         pass
 
     def close(self):
         pass
 
-    def status(self):
+    def stat(self):
         pass
 
     def abort(self):
@@ -84,4 +109,4 @@ class TCB(TCBase):
         pass
 
 
-c = TCB()
+# c = TCB()
