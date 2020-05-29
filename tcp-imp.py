@@ -25,7 +25,7 @@ try:
             continue
 
         data = dbuf['data']
-        tcp_dat = parse.ip(data)
+        tcp_dat = parse.tcp(data)
         utils.print_pac(dbuf, tcp_dat)
 
 

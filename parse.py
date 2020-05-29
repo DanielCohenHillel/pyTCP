@@ -40,7 +40,7 @@ def ip(packet: bytes) -> dict:
     return parpack
 
 
-def parse(packet):
+def tcp(packet):
     parpack = {
         'src_port': packet[0:2],
         'dst_port': packet[2:4],
