@@ -34,6 +34,7 @@ try:
 
         # Flags: CWR ECE URG ACK PSH RST SYN FIN
         flags = utils.Flags(tcparse["flags"])
+        # print([a for a in filter(lambda a: not a.startswith('__'), dir(flags))])
         print(flags)
 
 

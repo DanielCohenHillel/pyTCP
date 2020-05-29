@@ -26,25 +26,13 @@ def print_pac(iph, tcph):
 
 class Flags:
     def __init__(self, byte):
-        self.cwr = 1 << 7 & byte != 0
-        self.ece = 1 << 6 & byte != 0
-        self.urg = 1 << 5 & byte != 0
-        self.ack = 1 << 4 & byte != 0
-        self.psh = 1 << 3 & byte != 0
-        self.rst = 1 << 2 & byte != 0
-        self.syn = 1 << 1 & byte != 0
-        self.fin = 1 << 0 & byte != 0
+        self.flg_opts = ['ack', 'cwr', 'ece',
+                         'fin', 'psh', 'rst', 'syn', 'urg']
+        for i, flag in enumerate(reversed(self.flg_opts)):
+            self.__setattr__(flag, 1 << i & byte != 0)
 
     def __repr__(self):
-        flgstr = f'''\
-            \33[1mCWR:\33[0m {self.cwr}
-            \33[1mECE:\33[0m {self.ece}
-            \33[1mURG:\33[0m {self.urg}
-            \33[1mACK:\33[0m {self.ack}
-            \33[1mPSH:\33[0m {self.psh}
-            \33[1mRST:\33[0m {self.rst}
-            \33[1mSYN:\33[0m {self.syn}
-            \33[1mFIN:\33[0m {self.fin}
-            '''
-        return flgstr
+        fstr = '\n'.join(
+            [f'\33[1m{flag}:\33[0m {self.__getattribute__(flag)}' for flag in self.flg_opts])
+        return fstr
 

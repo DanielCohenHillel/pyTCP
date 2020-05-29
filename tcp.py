@@ -78,7 +78,8 @@ class TCB(TCBase):
             pass
         if self.state == State.LISTEN:
             pass
-        print("\33[31m\33[1mError:\33[0m\33[1m connection already exists.")
+        else:
+            print("\33[31m\33[1mError:\33[0m\33[1m connection already exists.")
 
     def send(self):
         '''
