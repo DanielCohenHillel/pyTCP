@@ -107,4 +107,4 @@ I always need this on hand so I put it here for convinience
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
-Works only on linux. Need to run as sudo.
+Works only on linux. Need to run as sudo unless you set the `tun` device in `/dev/net/` to be accessible by non-root users (i.e. `chmod 0666 /dev/net/tun`).
