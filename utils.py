@@ -1,3 +1,4 @@
+import re
 # Table of protocols number
 prtcls = []
 with open('protocol-numbers-1.csv') as file:
@@ -39,45 +40,101 @@ class Flags:
 
     @classmethod
     def flag(cls, name):
-        return 1 << cls.flg_opts.index(name)
+        return 1 << 7-cls.flg_opts.index(name)
 
 
-def mkpkt():
+def mkpkt(data: bytes, srcip: bytearray, dstip: bytearray,
+          srcp: bytearray, dstp: bytearray, iopts=b'', topts=b''):
     # -------- layer 3 (IP) --------
     ver = 0x40  # 4 bits - IP version (we use IPv4)
     ihl = 0x05  # 4 bits - Header length - TODO: Calc IHL
     dscp = 0    # 6 bits - differentiated services code point ¯\_(ツ)_/¯
     ecn = 0     # 2 bits - explicit congestion notification ¯\_(ツ)_/¯
-    tlen = 20   # 2 bytes - total length
+    tlen = 40 + len(data) + len(iopts) + len(topts)   # 2 bytes - total length
     pid = 0     # 2 bytes - identification
     flags = 0   # 3 bits - flags (evil, DF (don't fragment), MF (more frags))
     frgof = 0   # 13 bits - fragment offset
-    ttl = 1     # 1 byte - time to live
-    prtcl = 1   # 1 byte - protocol (TCP = 6)
-    hchksm = 0  # 2 bytes - header checksum
-    srcip = 0   # 4 bytes - source IP
-    dstip = 0   # 4 bytes - destenation IP
-    iopts = 0   # varied - IPv4 options
+    ttl = 64     # 1 byte - time to live
+    prtcl = 6   # 1 byte - protocol (TCP = 6)
+    # srcip = 0   # 4 bytes - source IP
+    # dstip = 0   # 4 bytes - destenation IP
+    # iopts = 0   # varied - IPv4 options
+    iph = bytearray([ver | ihl, dscp | ecn, tlen >> 8, tlen & 0xff,
+                     pid & 0xff00, pid & 0x00ff, flags << 4 | frgof >> 8, frgof & 0xff,
+                     ttl, prtcl, 0, 0])
+    iph.extend(srcip)
+    iph.extend(dstip)
+    iph.extend(iopts)
+    ipchksm = calc_checksum(iph)
+    iph[10:12] = [ipchksm >> 8, ipchksm & 0xff]  # Calc header check sum
 
     # -------- layer 4 (TCP) --------
-    srcp = 0    # 2 bytes - source port
-    dstp = 0    # 2 bytes - destenation port
-    sqnm = 0    # 4 bytes - sequance number
+    # srcp = 0    # 2 bytes - source port
+    # dstp = 0    # 2 bytes - destenation port
+    sqnm = 100    # 4 bytes - sequance number
     acknm = 0   # 4 bytes - acknowledgment number (if ACK flag is set)
-    datof = 0   # 4 bit (Data offset) + 3 bit (rsv=0) + 1 bit (NS flag = 0)
-    flags = 0   # 1 byte (ack, cwr, ece, fin, psh, rst, syn, urg)
-    winsz = 0   # 2 bytes - window size
-    chksm = 0   # 2 bytes - check sum
+    datof = 0x50   # 4 bit (Data offset) + 3 bit (rsv=0) + 1 bit (NS flag = 0)
+    flags = 2   # 1 byte (ack, cwr, ece, fin, psh, rst, syn, urg)
+    winsz = 0xfaf0   # 2 bytes - window size
+    # chksm = 0   # 2 bytes - check sum
     urgpnt = 0  # 2 bytes - urgent pointer (if URG flag is set)
-    topts = 0   # varied (0-40 bytes, multiples of 4) - TCP options
-    data = 0    # varied - higher layer data (application layer)
+    # topts = b''   # varied (0-40 bytes, multiples of 4) - TCP options
+    # data = 0    # varied - higher layer data (application layer)
 
-    pktstr = f'{hex(ver | ihl)}{dscp | ecn}'
-    print(pktstr)
+    # TCP header
+    tcph = srcp
+    tcph.extend(dstp)
+    tcph.extend([sqnm >> 24, sqnm >> 16 & 0xff, sqnm >> 8 & 0xff,
+                 sqnm & 0xff, acknm >> 24, acknm >> 16 & 0xff,
+                 acknm >> 8 & 0xff, acknm & 0xff, datof, flags,
+                 winsz >> 8, winsz & 0xff, 0, 0, urgpnt >> 8, urgpnt >> 8 & 0xff])
+    tcph.extend(topts)
+    tcph.extend(data)
 
+    # IP psuedo-header
+    ipph = srcip
+    ipph.extend(dstip)
+    ipph.append(0)
+    ipph.append(prtcl)
+    ipph.extend([tlen >> 8, tlen & 0xff])
+    ipph.extend(tcph)
+
+    chksm = calc_checksum(ipph)
+
+    tcph[16:18] = [chksm >> 8, chksm & 0xff]
+
+    # Packet = ip header + tcp heaser\data
+    print(len(iph))
+    print(len(tcph))
+    iph.extend(tcph)
+    return iph
+
+
+def calc_checksum(data: bytes):
+    if len(data) % 4 != 0:
+        print('\33[1m\33[31mError: \33[0m\33[1m'
+              'Header must be a multiple of 32 bits...\33[0m')
+    # list of all 2-byte (4 hex-digits) words in the packet (in hex)
+    words = re.findall('.'*4, data.hex())
+    # Turning hex into ints and summing
+    s = sum([int(word, 16) for word in words])
+    # check carry (if more than 4 hex digits, carry)
+    while len(hex(s)) > 6:
+        s = int(hex(s)[-4:], 16) + int(hex(s)[-5], 16)
+    return s
 
 # octets = [ver | ihl, dscp | ecn, tlen & 0xff00, tlen & 0x00ff,
 #           pid & 0xff00, pid & 0x00ff, flags | frgof, ttl, prtcl,
 #           hchksm & 0xff00, hchksm & 0x00ff]
 # octets.extend(srcip).extend(dstip)
 
+
+data = b''
+srcip = bytearray([192, 168, 0, 123])
+dstip = bytearray([192, 168, 0, 68])
+
+srcp = bytearray([0, 80])
+dstp = bytearray([0, 100])
+print('\33[1m----------------------------------------\33[0m\n')
+pkt = mkpkt(data, srcip, dstip, srcp, dstp)
+print(pkt.hex())

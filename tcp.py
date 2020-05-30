@@ -81,9 +81,10 @@ class TCBase(abc.ABC):
 
 
 class TCB(TCBase):
-    def __init__(self):
+    def __init__(self, tun):
         self.state = State.LISTEN
         self.quad = None
+        self.tun = tun  # TODO: change this, should combine tcpimp.py with tcp.py
 
     def open(self, quad):
         '''
@@ -135,7 +136,6 @@ class TCB(TCBase):
             pass  # TODO: Queue for processing.
 
         if self.state == State.LISTEN:
-            print(utils.Flags.flag('syn'))
             if packet['flags'] == utils.Flags.flag('syn'):
                 # Send SYN,ACK
                 self.State = State.SYN_RCVD

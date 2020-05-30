@@ -6,6 +6,7 @@ import sys
 # import tcp
 import utils
 import tcp
+import time
 # from collections.abc import Iterable
 restr = '''\
 45 00 00 54 ab b3 40 00 40 01 0d 29 c0 a8 00 7b\
@@ -21,18 +22,79 @@ c0 a8 00 79 e9 9a 00 50 51 61 80 88 00 00 00 00\
 a0 02 fa f0 0f 92 00 00 02 04 05 b4 04 02 08 0a\
 4e 42 b1 21 00 00 00 00 01 03 03 07\
 '''
+restr = '450000140000000040060760c0a8007bc0a800790050006400000000000000000000000083130000'
+restr = '45000014000000004006075fc0a8007bc0a800780050006400000000000000000000000083120000'
+restr = '45 00 0014 0000 0000 40 06 072b c0a8007b c0a80041'\
+    '04d2 0050 166cce29 00000000 50 02 faf0 82de 0000'
+# restr = '45000014000000004006072bc0a8007bc0a800440050006400000000000000005002faf0cdd10000'
+restr = '45000014000000004006072bc0a8007bc0a800440050006400000064000000005002faf0ce3500000204b40402080ac60ecd6f0000000001030307'
+
+restr = '''\
+45 00 00 3c a1 05 40 00 40 06 17 7c c0 a8 00 7b\
+c0 a8 00 6f\
+\
+04 d2\
+00 50\
+00 56 06 ac\
+00 00 00 00\
+50\
+02\
+fa f0\
+01 97\
+00 00\
+'''
+
+# 45 00 00 14 00 00 00 00 40 06 07 2b c0 a8 00 7b\
+restr = '''\
+45 00 00 34 00 00 00 00 40 06 07 2b c0 a8 00 7b\
+c0 a8 00 6f\
+\
+50 00\
+64 00\
+00 00 00 64\
+00 00 00 00\
+50\
+02\
+fa f0\
+ce 35\
+00 00\
+'''
+
+# restr = '''\
+# 45 00 00 14 00 00 00 00 40 06 07 2b c0 a8 00 7b c0\
+# a8 00 44 00\
+# \
+# 50 00\
+# 64 00\
+# 00 00 00 64\
+# 00 00 00 00\
+# 50\
+# 02\
+# fa f0\
+# ce 35\
+# 00 00\
+# '''
+restr = '45000028000000004006073fc0a8007bc0a800440050006400000064000000005002faf0ce490000'
+
+
+#    srcp dstp  seqnum   acknum
+# restr = '45000014000000004006072bc0a8007bc0a80040050006400000000000000000000 0000 82de0000'
 res = bytes.fromhex(restr)
 print(res)
 
 tun = tt.TunTap('Tun', 'tun2')
 tun.config('192.168.0.123', '255.255.255.0')
+# tun.config('127.0.0.1', '255.255.255.0')
+conns = []
 try:
-    conns = []
     for _ in range(510000):
         # Command options
         verbose = '-v' in sys.argv
         surpress = '-s' in sys.argv
 
+        for _ in range(10):
+            tun.write(res)
+            time.sleep(1)
         buff = tun.read(512)
         dbuf = parse.ip(buff)
         if dbuf is None:  # Not a valid IPv4 packet
@@ -59,14 +121,13 @@ try:
         conn_exists = False
         conn = None
         for con in conns:
-            print('CON: ', con)
-            print('quad: ', con.quad)
+            # print('quad: ', con.quad)
             if con.quad == quad:  # The packet is for an existing connection
                 conn_exists = True
                 conn = con
                 break
         if not conn_exists:  # Start a new connection
-            conn = tcp.TCB()
+            conn = tcp.TCB(tun)
             conn.open(quad)
             conns.append(conn)  # Add connection to connections list
 
@@ -79,3 +140,5 @@ except Exception as e:
 finally:
     print('\n\33[1mExiting but its good :)\33[0m')
     tun.close()
+    print('\33[1m', '-'*30, 'Connections', '-'*30, '\33[0m')
+    print('\n'.join([str(conn.quad) for conn in conns]))
