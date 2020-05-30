@@ -5,6 +5,7 @@ The TCP connection object
 from enum import Enum
 import abc
 import logging
+import utils
 
 
 class State(Enum):
@@ -25,6 +26,20 @@ class Quad:
     def __init__(self, src_ip, src_port, dst_ip, dst_port):
         self.src = (src_ip, src_port)
         self.dst = (dst_ip, dst_port)
+
+    def __eq__(self, other):
+        return self.src == other.src and self.dst == other.dst
+
+    def __repr__(self):
+        qstr = f'''
+            \33[1mSource:
+                \33[1mIP:\33[0m   {'.'.join([str(b) for b in self.src[0]])}
+                \33[1mPort:\33[0m {int.from_bytes(self.src[1], 'big')}
+            \33[1mDestenation:\33[0m
+                \33[1mIP:\33[0m   {'.'.join([str(b) for b in self.dst[0]])}
+                \33[1mPort:\33[0m {int.from_bytes(self.dst[1], 'big')}
+            '''
+        return qstr
 
 
 class TCBase(abc.ABC):
@@ -67,7 +82,8 @@ class TCBase(abc.ABC):
 
 class TCB(TCBase):
     def __init__(self):
-        self.state = State.CLOSED
+        self.state = State.LISTEN
+        self.quad = None
 
     def open(self, quad):
         '''
@@ -75,9 +91,9 @@ class TCB(TCBase):
         CLOSED -> SYN_SENT
         '''
         if self.state == State.CLOSED:
-            pass
+            self.quad = quad
         if self.state == State.LISTEN:
-            pass
+            self.quad = quad
         else:
             print("\33[31m\33[1mError:\33[0m\33[1m connection already exists.")
 
@@ -97,7 +113,7 @@ class TCB(TCBase):
         '''
         pass
 
-    def recv(self):
+    def recv(self, packet):
         '''
         LISTEN ----> SYN_RCVD <---------------- *
         SYN_SENT --> ESTAB <------------------- *
@@ -110,13 +126,19 @@ class TCB(TCBase):
         CLOSING ---> TIME_WAIT
         LAST_ACK --> CLOSED
         '''
+        # print('\33[1m~~ RECV ~~\33[1m')
         if self.state == State.CLOSED:
-            logging.log(40,
-                        "\33[31m\33[1mError:\33[0m connection doesn't exist.")
+            print("\33[31m\33[1mError:\33[0m\33[1m connection doesn't exist.")
         if self.state in [State.LISTEN, State.SYN_SENT, State.SYN_RCVD]:
             pass  # TODO: Queue for processing. (read from tun device)
         if self.state in [State.ESTAB, State.FIN_WAIT1, State.FIN_WAIT2]:
             pass  # TODO: Queue for processing.
+
+        if self.state == State.LISTEN:
+            print(utils.Flags.flag('syn'))
+            if packet['flags'] == utils.Flags.flag('syn'):
+                # Send SYN,ACK
+                self.State = State.SYN_RCVD
 
     def close(self):
         '''
@@ -137,6 +159,3 @@ class TCB(TCBase):
     def msg_usr(self):
         pass
 
-
-c = TCB()
-c.open(1)

@@ -25,7 +25,7 @@ def ip(packet: bytes) -> dict:
     if plen != len(packet):
         print(f"\n\33[1m\33[31mError:\33[0m Packet header said it's \33[1m{plen}\33[0m"
               f" bytes long but it's acutally \33[1m{len(packet)}\33[0m bytes long!"
-              "\n\33[1m1mCorrupted packet.\33[0m")
+              "\n\33[1mCorrupted packet.\33[0m")
         return
 
     ihl = parpack['IHL']  # IP header length
@@ -56,6 +56,7 @@ def tcp(packet: bytes) -> dict:
         'chk_sum': packet[16:18],
         'urg_pnt': packet[18:20]
     }
+    # TODO: Check the check sum
     dat_off = parpack['dat_off']*4
     parpack['opts'] = packet[20:dat_off]
     parpack['data'] = packet[dat_off:]

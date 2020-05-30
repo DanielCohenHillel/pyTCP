@@ -5,13 +5,29 @@ import parse
 import sys
 # import tcp
 import utils
+import tcp
 # from collections.abc import Iterable
-res = b'450000541910400040014fc0c0a8012108080808080083ab0010003cd805d15e0000000004d1070000000000101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f3031323334353637'
+restr = '''\
+45 00 00 54 ab b3 40 00 40 01 0d 29 c0 a8 00 7b\
+c0 a8 00 01 08 00 11 31 00 04 00 0c ce 57 d2 5e\
+00 00 00 00 7c 35 0b 00 00 00 00 00 10 11 12 13\
+14 15 16 17 18 19 1a 1b 1c 1d 1e 1f 20 21 22 23\
+24 25 26 27 28 29 2a 2b 2c 2d 2e 2f 30 31 32 33\
+34 35 36 37\
+'''
+restr = '''\
+45 00 00 3c 6d 62 40 00 40 06 4b 15 c0 a8 00 7b\
+c0 a8 00 79 e9 9a 00 50 51 61 80 88 00 00 00 00\
+a0 02 fa f0 0f 92 00 00 02 04 05 b4 04 02 08 0a\
+4e 42 b1 21 00 00 00 00 01 03 03 07\
+'''
+res = bytes.fromhex(restr)
+print(res)
 
-res = b'0x4500009a293c400001119ef9c0a8007beffffffadc3b076c00863c934d2d534541524348202a20485454502f312e310d0a484f53543a203233392e3235352e3235352e3235303a313930300d0a4d414e3a2022737364703a646973636f766572220d0a4d583a20310d0a53543a2075726e3a6469616c2d6d756c746973637265656e2d6f72673a736572766963653a6469616c3a310d0a0d0a00'
 tun = tt.TunTap('Tun', 'tun2')
 tun.config('192.168.0.123', '255.255.255.0')
 try:
+    conns = []
     for _ in range(510000):
         # Command options
         verbose = '-v' in sys.argv
@@ -21,7 +37,7 @@ try:
         dbuf = parse.ip(buff)
         if dbuf is None:  # Not a valid IPv4 packet
             continue
-        if not verbose and dbuf['prtcl'] != 6:  # TCP protocol
+        if dbuf['prtcl'] != 6:  # TCP protocol
             if surpress:
                 continue
             print(f'\n\33[1mRecived \33[35m{utils.prtcls[dbuf["prtcl"]]}\33[39m packet,'
@@ -34,8 +50,27 @@ try:
 
         # Flags: CWR ECE URG ACK PSH RST SYN FIN
         flags = utils.Flags(tcparse["flags"])
-        # print([a for a in filter(lambda a: not a.startswith('__'), dir(flags))])
         print(flags)
+
+        # ------ Do stuff on the packet ------------
+        quad = tcp.Quad(dbuf['srcip'], tcparse['src_port'],
+                        dbuf['dstip'], tcparse['dst_port'])
+        # Check if connection already exists, if not, create one
+        conn_exists = False
+        conn = None
+        for con in conns:
+            print('CON: ', con)
+            print('quad: ', con.quad)
+            if con.quad == quad:  # The packet is for an existing connection
+                conn_exists = True
+                conn = con
+                break
+        if not conn_exists:  # Start a new connection
+            conn = tcp.TCB()
+            conn.open(quad)
+            conns.append(conn)  # Add connection to connections list
+
+        conn.recv(tcparse)
 
 
 except Exception as e:
@@ -44,4 +79,3 @@ except Exception as e:
 finally:
     print('\n\33[1mExiting but its good :)\33[0m')
     tun.close()
-
