@@ -25,7 +25,7 @@ def print_pac(iph, tcph):
 
 
 class Flags:
-    flg_opts = ['ack', 'cwr', 'ece', 'fin', 'psh', 'rst', 'syn', 'urg']
+    flg_opts = ['cwr', 'ece', 'urg', 'ack', 'psh', 'rst', 'syn', 'fin']
 
     def __init__(self, byte):
         for i, flag in enumerate(reversed(Flags.flg_opts)):
@@ -42,9 +42,14 @@ class Flags:
     def flag(cls, name):
         return 1 << 7-cls.flg_opts.index(name)
 
+    def byte(self):
+        b = sum([1 << i if getattr(self, flag)
+                 else 0 for i, flag in enumerate(reversed(Flags.flg_opts))])
+        return b
+
 
 def mkpkt(data: bytes, srcip: bytearray, dstip: bytearray,
-          srcp: bytearray, dstp: bytearray, iopts=b'', topts=b''):
+          srcp: bytearray, dstp: bytearray, flags: Flags, acknm=0, iopts=b'', topts=b''):
     # -------- layer 3 (IP) --------
     ver = 0x40  # 4 bits - IP version (we use IPv4)
     ihl = 0x05  # 4 bits - Header length - TODO: Calc IHL
@@ -52,7 +57,7 @@ def mkpkt(data: bytes, srcip: bytearray, dstip: bytearray,
     ecn = 0     # 2 bits - explicit congestion notification ¯\_(ツ)_/¯
     tlen = 40 + len(data) + len(iopts) + len(topts)   # 2 bytes - total length
     pid = 0     # 2 bytes - identification
-    flags = 0   # 3 bits - flags (evil, DF (don't fragment), MF (more frags))
+    iflg = 0   # 3 bits - flags (evil, DF (don't fragment), MF (more frags))
     frgof = 0   # 13 bits - fragment offset
     ttl = 64     # 1 byte - time to live
     prtcl = 6   # 1 byte - protocol (TCP = 6)
@@ -60,7 +65,7 @@ def mkpkt(data: bytes, srcip: bytearray, dstip: bytearray,
     # dstip = 0   # 4 bytes - destenation IP
     # iopts = 0   # varied - IPv4 options
     iph = bytearray([ver | ihl, dscp | ecn, tlen >> 8, tlen & 0xff,
-                     pid & 0xff00, pid & 0x00ff, flags << 4 | frgof >> 8, frgof & 0xff,
+                     pid & 0xff00, pid & 0x00ff, iflg << 4 | frgof >> 8, frgof & 0xff,
                      ttl, prtcl, 0, 0])
     iph.extend(srcip)
     iph.extend(dstip)
@@ -72,9 +77,9 @@ def mkpkt(data: bytes, srcip: bytearray, dstip: bytearray,
     # srcp = 0    # 2 bytes - source port
     # dstp = 0    # 2 bytes - destenation port
     sqnm = 100    # 4 bytes - sequance number
-    acknm = 0   # 4 bytes - acknowledgment number (if ACK flag is set)
+    # acknm = 0   # 4 bytes - acknowledgment number (if ACK flag is set)
     datof = 0x50   # 4 bit (Data offset) + 3 bit (rsv=0) + 1 bit (NS flag = 0)
-    flags = 2   # 1 byte (ack, cwr, ece, fin, psh, rst, syn, urg)
+    tflg = flags.byte()   # 1 byte (ack, cwr, ece, fin, psh, rst, syn, urg)
     winsz = 0xfaf0   # 2 bytes - window size
     # chksm = 0   # 2 bytes - check sum
     urgpnt = 0  # 2 bytes - urgent pointer (if URG flag is set)
@@ -86,7 +91,7 @@ def mkpkt(data: bytes, srcip: bytearray, dstip: bytearray,
     tcph.extend(dstp)
     tcph.extend([sqnm >> 24, sqnm >> 16 & 0xff, sqnm >> 8 & 0xff,
                  sqnm & 0xff, acknm >> 24, acknm >> 16 & 0xff,
-                 acknm >> 8 & 0xff, acknm & 0xff, datof, flags,
+                 acknm >> 8 & 0xff, acknm & 0xff, datof, tflg,
                  winsz >> 8, winsz & 0xff, 0, 0, urgpnt >> 8, urgpnt >> 8 & 0xff])
     tcph.extend(topts)
     tcph.extend(data)
@@ -129,12 +134,14 @@ def calc_checksum(data: bytes):
 # octets.extend(srcip).extend(dstip)
 
 
-data = b''
-srcip = bytearray([192, 168, 0, 123])
-dstip = bytearray([192, 168, 0, 68])
+# data = b''
+# srcip = bytearray([192, 168, 0, 123])
+# dstip = bytearray([192, 168, 0, 68])
 
-srcp = bytearray([0, 80])
-dstp = bytearray([0, 100])
-print('\33[1m----------------------------------------\33[0m\n')
-pkt = mkpkt(data, srcip, dstip, srcp, dstp)
-print(pkt.hex())
+# srcp = bytearray([0, 80])
+# dstp = bytearray([0, 100])
+
+# flags = Flags(2)
+# print('\33[1m----------------------------------------\33[0m\n')
+# pkt = mkpkt(data, srcip, dstip, srcp, dstp, flags)
+# print(pkt.hex())

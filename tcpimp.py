@@ -92,9 +92,9 @@ try:
         verbose = '-v' in sys.argv
         surpress = '-s' in sys.argv
 
-        for _ in range(10):
-            tun.write(res)
-            time.sleep(1)
+        # for _ in range(10):
+        #     tun.write(res)
+        #     time.sleep(1)
         buff = tun.read(512)
         dbuf = parse.ip(buff)
         if dbuf is None:  # Not a valid IPv4 packet

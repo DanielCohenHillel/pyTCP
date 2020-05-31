@@ -98,7 +98,7 @@ class TCB(TCBase):
         else:
             print("\33[31m\33[1mError:\33[0m\33[1m connection already exists.")
 
-    def send(self):
+    def send(self, packet):
         '''
         CLOSED -----> SYN_SENT
         LISTEN -----> SYN_SENT <--------------- *
@@ -112,7 +112,21 @@ class TCB(TCBase):
         FIN_WAIT1 --> CLOSING
         FIN_WAIT2 --> TIME_WAIT
         '''
-        pass
+        # print('\33[36m', self.quad.src[0])
+        data = b''
+        srcip = bytearray(self.quad.dst[0])
+        dstip = bytearray(self.quad.src[0])
+
+        srcp = bytearray(self.quad.dst[1])
+        dstp = bytearray(self.quad.src[1])
+        acknm = int.from_bytes(packet['seq_num'], 'big') + 1
+
+        print('ACK=', acknm)
+
+        if self.State == State.SYN_RCVD:
+            flags = utils.Flags(0x12)
+        packet = utils.mkpkt(data, srcip, dstip, srcp, dstp, flags, acknm)
+        self.tun.write(packet)
 
     def recv(self, packet):
         '''
@@ -139,6 +153,7 @@ class TCB(TCBase):
             if packet['flags'] == utils.Flags.flag('syn'):
                 # Send SYN,ACK
                 self.State = State.SYN_RCVD
+                self.send(packet)
 
     def close(self):
         '''
