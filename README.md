@@ -18,9 +18,16 @@ Low level implementation of the TCP protocol in python using TunTap virtual netw
 a connection is an object rather than an element in the TCB (and the TCB should be accessed 
 with a pointer to it).
 
+**The most beautiful image you'll ever see**
+
+![:)](nice.png)
+
+Now this is some real three-way handshake action going on.
+
 In case you are wondering how well does this work, let me answer that with an image:
 
 ![:(](damn.png)
+
 
 I always need this on hand so I put it here for convenience
 
