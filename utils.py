@@ -1,4 +1,7 @@
 import re
+import struct
+import array
+
 # Table of protocols number
 prtcls = []
 with open('protocol-numbers-1.csv') as file:
@@ -48,8 +51,14 @@ class Flags:
         return b
 
 
-def mkpkt(data: bytes, srcip: bytearray, dstip: bytearray,
-          srcp: bytearray, dstp: bytearray, flags: Flags, acknm=0, iopts=b'', topts=b''):
+def mkpkt(data: bytes, quad, flags: Flags, acknm=0, iopts=b'', topts=b''):
+    '''Create a TCP/IP packet from specified parameters'''
+    # Quad object to adresses
+    srcip = bytes(quad.dst[0])
+    dstip = bytes(quad.src[0])
+
+    srcp = bytes(quad.dst[1])
+    dstp = bytes(quad.src[1])
     # -------- layer 3 (IP) --------
     ver = 0x40  # 4 bits - IP version (we use IPv4)
     ihl = 0x05  # 4 bits - Header length - TODO: Calc IHL
@@ -61,69 +70,73 @@ def mkpkt(data: bytes, srcip: bytearray, dstip: bytearray,
     frgof = 0   # 13 bits - fragment offset
     ttl = 64    # 1 byte - time to live
     prtcl = 6   # 1 byte - protocol (TCP = 6)
-    iph = bytearray([ver | ihl, dscp | ecn, tlen >> 8, tlen & 0xff,
-                     pid & 0xff00, pid & 0x00ff, iflg << 4 | frgof >> 8, frgof & 0xff,
-                     ttl, prtcl, 0, 0])
-    iph.extend(srcip)
-    iph.extend(dstip)
-    iph.extend(iopts)
+
+    iph = struct.pack(
+        "!BBHHBBBBH4s4s",  # Format (H=2bytes  I=4bytes  B=1Byte, s=bytestring)
+        ver | ihl,         # IP version | IP header length
+        dscp | ecn,        #
+        tlen,              # Total length of the packet
+        pid,               # Identification
+        iflg << 4 | frgof >> 8,  # IP flags | fragment offset
+        frgof & 0xff,      # Fragment offset
+        ttl,               # Time To Live
+        prtcl,             # Protocol number (TCP = 6)
+        0,                 # Checksum (to be calculated later)
+        srcip,             # Source IP address
+        dstip              # Destenation IP address
+    )
     ipchksm = calc_checksum(iph)
-    iph[10:12] = [ipchksm >> 8, ipchksm & 0xff]  # Calc header check sum
+    iph = iph[:10] + struct.pack('H', ipchksm) + iph[12:]
 
     # -------- layer 4 (TCP) --------
-    sqnm = 100      # 4 bytes - sequance number
-    datof = 0x50    # 4 bit (Data offset) + 3 bit (rsv=0) + 1 bit (NS flag = 0)
-    tflg = flags.byte()   # 1 byte (ack, cwr, ece, fin, psh, rst, syn, urg)
-    winsz = 0xfaf0  # 2 bytes - window size
-    urgpnt = 0      # 2 bytes - urgent pointer (if URG flag is set)
+    sqnm = 100           # 4 bytes - sequance number
+    datof = 0x50         # 4 bit (Data offset) + 3b (rsv=0) + 1b (NS flag = 0)
+    tflg = flags.byte()  # 1 byte (ack, cwr, ece, fin, psh, rst, syn, urg)
+    winsz = 0xfaf0       # 2 bytes - window size
+    urgpnt = 0           # 2 bytes - urgent pointer (if URG flag is set)
 
     # TCP header
-    tcph = srcp
-    tcph.extend(dstp)
-    tcph.extend([sqnm >> 24, sqnm >> 16 & 0xff, sqnm >> 8 & 0xff,
-                 sqnm & 0xff, acknm >> 24, acknm >> 16 & 0xff,
-                 acknm >> 8 & 0xff, acknm & 0xff, datof, tflg,
-                 winsz >> 8, winsz & 0xff, 0, 0, urgpnt >> 8, urgpnt >> 8 & 0xff])
-    tcph.extend(topts)
-    tcph.extend(data)
+    tcph = struct.pack(
+        '!2s2sIIBBHHH',  # format (H=2bytes  I=4bytes  B=1Byte, s=bytestring)
+        srcp,            # Source port
+        dstp,            # Destenation port
+        sqnm,            # Sequence number
+        acknm,           # Acknewledgement nubmer
+        datof,           # Data offset (first 4bit) rsrvd (3bit) cwr flg (1bit)
+        tflg,            # Flags (TCP)
+        winsz,           # Window Size
+        0,               # Checksum (initialy 0)
+        urgpnt           # Urgent pointer
+    )
 
-    # IP psuedo-header
-    ipph = srcip
-    ipph.extend(dstip)
-    ipph.append(0)
-    ipph.append(prtcl)
+    # IP psuedo-header (for checksum calculation)
     tcplen = len(tcph) + len(topts) + len(data)
-    print('tcp length: ', tcplen)
-    ipph.extend([tcplen >> 8, tcplen & 0xff])
-    ipph.extend(tcph)
+    ipph = struct.pack(
+        '!4s4sHH',  # Format
+        srcip,      # Source Address
+        dstip,      # Destination Address
+        prtcl,      # Protocol ID
+        tcplen      # TCP Length
+    )
 
-    chksm = calc_checksum(ipph)
+    chksm = calc_checksum(ipph + tcph)
     del ipph  # Discard of psuedo-header, only use to calc the checksum
 
     # Insert the checksum, was privously 0 for calculation purpouses
-    tcph[16:18] = [chksm >> 8, chksm & 0xff]
+    tcpack = tcph[:16] + struct.pack('H', chksm) + tcph[18:]
 
     # Packet = ip header (iph) + tcp heaser (tcph) + data
-    iph.extend(tcph)
-    return iph
+    return iph + tcpack
 
 
 def calc_checksum(data: bytes):
     # Check that the data is of valid length
-    if len(data) % 4 != 0:
-        print('\33[1m\33[31mError: \33[0m\33[1m'
-              'Header must be a multiple of 32 bits...\33[0m')
-
-    # list of all 2-byte (4 hex-digits) words in the packet (in hex)
-    words = re.findall('.'*4, data.hex())
-
-    # Turning hex into ints and summing
-    s = sum([int(word, 16) for word in words])
-
-    # check carry (if more than 4 hex digits, add the last digit to the sum)
-    while len(hex(s)) > 6:
-        s = int(hex(s)[-4:], 16) + int(hex(s)[-5], 16)
-
-    # Return the one's compiment of the sum
-    return 0xffff - s
-
+    if len(data) % 2 != 0:
+        data += b'\0'
+    # Sum all words
+    res = sum(array.array("H", data))
+    # Carry
+    res = (res >> 16) + (res & 0xffff)
+    res += res >> 16
+    # Return one's complement
+    return (~res) & 0xffff

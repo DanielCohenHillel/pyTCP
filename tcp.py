@@ -114,18 +114,13 @@ class TCB(TCBase):
         '''
         # print('\33[36m', self.quad.src[0])
         data = b''
-        srcip = bytearray(self.quad.dst[0])
-        dstip = bytearray(self.quad.src[0])
-
-        srcp = bytearray(self.quad.dst[1])
-        dstp = bytearray(self.quad.src[1])
         acknm = int.from_bytes(packet['seq_num'], 'big') + 1
 
         print('ACK=', acknm)
 
         if self.State == State.SYN_RCVD:
             flags = utils.Flags(0x12)
-        packet = utils.mkpkt(data, srcip, dstip, srcp, dstp, flags, acknm)
+        packet = utils.mkpkt(data, self.quad, flags, acknm)
         self.tun.write(packet)
 
     def recv(self, packet):
