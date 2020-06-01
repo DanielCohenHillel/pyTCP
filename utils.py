@@ -119,14 +119,14 @@ def mkpkt(data: bytes, quad, flags: Flags, acknm=0, iopts=b'', topts=b''):
         tcplen      # TCP Length
     )
 
-    chksm = calc_checksum(ipph + tcph)
+    chksm = calc_checksum(ipph + tcph + data)
     del ipph  # Discard of psuedo-header, only use to calc the checksum
 
     # Insert the checksum, was privously 0 for calculation purpouses
-    tcpack = tcph[:16] + struct.pack('H', chksm) + tcph[18:]
+    tcph = tcph[:16] + struct.pack('H', chksm) + tcph[18:]
 
     # Packet = ip header (iph) + tcp heaser (tcph) + data
-    return iph + tcpack
+    return iph + tcph + data
 
 
 def calc_checksum(data: bytes):

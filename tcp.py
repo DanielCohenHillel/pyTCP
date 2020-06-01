@@ -136,6 +136,10 @@ class TCB(TCBase):
         CLOSING ---> TIME_WAIT
         LAST_ACK --> CLOSED
         '''
+        data = packet['data']
+        if len(data) != 0:
+            print("\33[1mThe internet said:\33[33m ",
+                  "".join([chr(d) for d in data]) + '\33[0m')
         # print('\33[1m~~ RECV ~~\33[1m')
         if self.state == State.CLOSED:
             print("\33[31m\33[1mError:\33[0m\33[1m connection doesn't exist.")

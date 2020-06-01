@@ -11,6 +11,7 @@ Low level implementation of the TCP protocol in python using TunTap virtual netw
   * [IPv4 on Wikipedia](https://en.wikipedia.org/wiki/IPv4)
   * Official IP specifications [RFC 760](https://tools.ietf.org/html/rfc760)
   * ICMP specifications [RFC 792](https://tools.ietf.org/html/rfc792)
+  * [List of TCP options](https://www.iana.org/assignments/tcp-parameters/tcp-parameters.xhtml)
 
 **Note:** The RFC 793 specification was written without object oriented programming in mind. Although I
 *can* code it in python I really don't *want* to. This is why this implementation is more 
