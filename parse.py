@@ -1,3 +1,5 @@
+import sys
+
 
 def ip(packet: bytes) -> dict:
     if len(packet) < 20:  # Packet can't be smaller than minimum header size
@@ -17,8 +19,10 @@ def ip(packet: bytes) -> dict:
         "dstip":  packet[16:20]
     }
     if parpack['ver'] != 4:  # IP version is not 4
-        print(
-            f'\n\33[1mRecived \33[35mIPv{parpack["ver"]}\33[39m packet, ignoring...\33[0m')
+        if '-s' in sys.argv:
+            return
+        print(f'\n\33[1mRecived \33[35mIPv{parpack["ver"]}\33[39m packet,'
+              ' ignoring...\33[0m')
         return
 
     plen = int.from_bytes(parpack['len'], 'big')  # Packet length

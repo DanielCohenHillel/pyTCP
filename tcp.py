@@ -85,6 +85,8 @@ class TCB(TCBase):
         self.state = State.LISTEN
         self.quad = None
         self.tun = tun  # TODO: change this, should combine tcpimp.py with tcp.py
+        self.sqnm = 0
+        self.acknm = 0
 
     def open(self, quad):
         '''
@@ -112,15 +114,22 @@ class TCB(TCBase):
         FIN_WAIT1 --> CLOSING
         FIN_WAIT2 --> TIME_WAIT
         '''
-        # print('\33[36m', self.quad.src[0])
         data = b''
-        acknm = int.from_bytes(packet['seq_num'], 'big') + 1
 
-        print('ACK=', acknm)
+        if self.state == State.SYN_RCVD:
+            self.acknm = int.from_bytes(packet['seq_num'], 'big') + 1
+            flags = utils.Flags(0x12)  # SYN, ACK (TODO: make simpler to do)
+            packet = utils.mkpkt(data, self.quad, flags, self.acknm, self.sqnm)
+            self.tun.write(packet)
+            self.sqnm += 1
+            return
 
-        if self.State == State.SYN_RCVD:
-            flags = utils.Flags(0x12)
-        packet = utils.mkpkt(data, self.quad, flags, acknm)
+        self.acknm += len(packet['data'])
+
+        if self.state == State.ESTAB:
+            flags = utils.Flags(0x10)  # ACK
+
+        packet = utils.mkpkt(data, self.quad, flags, self.acknm, self.sqnm)
         self.tun.write(packet)
 
     def recv(self, packet):
@@ -137,22 +146,36 @@ class TCB(TCBase):
         LAST_ACK --> CLOSED
         '''
         data = packet['data']
+
+        # Print the sent data in ASCII
         if len(data) != 0:
             print("\33[1mThe internet said:\33[33m ",
                   "".join([chr(d) for d in data]) + '\33[0m')
         # print('\33[1m~~ RECV ~~\33[1m')
         if self.state == State.CLOSED:
             print("\33[31m\33[1mError:\33[0m\33[1m connection doesn't exist.")
-        if self.state in [State.LISTEN, State.SYN_SENT, State.SYN_RCVD]:
-            pass  # TODO: Queue for processing. (read from tun device)
-        if self.state in [State.ESTAB, State.FIN_WAIT1, State.FIN_WAIT2]:
-            pass  # TODO: Queue for processing.
+            return
+        # if self.state in [State.LISTEN, State.SYN_SENT, State.SYN_RCVD]:
+        #     pass  # TODO: Queue for processing. (read from tun device)
+        # if self.state in [State.ESTAB, State.FIN_WAIT1, State.FIN_WAIT2]:
+        #     pass  # TODO: Queue for processing.
 
         if self.state == State.LISTEN:
             if packet['flags'] == utils.Flags.flag('syn'):
                 # Send SYN,ACK
-                self.State = State.SYN_RCVD
+                self.state = State.SYN_RCVD
                 self.send(packet)
+            return
+
+        if self.state == State.SYN_RCVD:
+            if packet['flags'] == utils.Flags.flag('ack'):
+                self.state = State.ESTAB
+                print(f'\n\33[1m\33[32mCnnection Established!!\33[0m')
+            return
+
+        if self.state == State.ESTAB:
+            self.send(packet)
+            return
 
     def close(self):
         '''

@@ -51,7 +51,7 @@ class Flags:
         return b
 
 
-def mkpkt(data: bytes, quad, flags: Flags, acknm=0, iopts=b'', topts=b''):
+def mkpkt(data: bytes, quad, flags: Flags, acknm=0, sqnm=0, iopts=b'', topts=b''):
     '''Create a TCP/IP packet from specified parameters'''
     # Quad object to adresses
     srcip = bytes(quad.dst[0])
@@ -89,7 +89,7 @@ def mkpkt(data: bytes, quad, flags: Flags, acknm=0, iopts=b'', topts=b''):
     iph = iph[:10] + struct.pack('H', ipchksm) + iph[12:]
 
     # -------- layer 4 (TCP) --------
-    sqnm = 100           # 4 bytes - sequance number
+    # sqnm = 100           # 4 bytes - sequance number
     datof = 0x50         # 4 bit (Data offset) + 3b (rsv=0) + 1b (NS flag = 0)
     tflg = flags.byte()  # 1 byte (ack, cwr, ece, fin, psh, rst, syn, urg)
     winsz = 0xfaf0       # 2 bytes - window size

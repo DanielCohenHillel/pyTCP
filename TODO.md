@@ -5,7 +5,7 @@
       * ~~Listen~~
       * ~~Syn Received~~
       * Syn Sent
-      * Established
+      * ~~Established~~ (muchhhh more to do)
       * Fin Wait 1
       * Fin Wait 2
       * Close Wait
