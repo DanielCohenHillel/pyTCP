@@ -114,22 +114,6 @@ class TCB(TCBase):
         FIN_WAIT1 --> CLOSING
         FIN_WAIT2 --> TIME_WAIT
         '''
-        data = b''
-
-        if self.state == State.SYN_RCVD:
-            self.acknm = int.from_bytes(packet['seq_num'], 'big') + 1
-            flags = utils.Flags(0x12)  # SYN, ACK (TODO: make simpler to do)
-            packet = utils.mkpkt(data, self.quad, flags, self.acknm, self.sqnm)
-            self.tun.write(packet)
-            self.sqnm += 1
-            return
-
-        self.acknm += len(packet['data'])
-
-        if self.state == State.ESTAB:
-            flags = utils.Flags(0x10)  # ACK
-
-        packet = utils.mkpkt(data, self.quad, flags, self.acknm, self.sqnm)
         self.tun.write(packet)
 
     def recv(self, packet):
@@ -146,6 +130,7 @@ class TCB(TCBase):
         LAST_ACK --> CLOSED
         '''
         data = packet['data']
+        self.acknm += len(data)
 
         # Print the sent data in ASCII
         if len(data) != 0:
@@ -164,7 +149,13 @@ class TCB(TCBase):
             if packet['flags'] == utils.Flags.flag('syn'):
                 # Send SYN,ACK
                 self.state = State.SYN_RCVD
-                self.send(packet)
+                self.acknm = int.from_bytes(packet['seq_num'], 'big') + 1
+                # SYN, ACK (TODO: make simpler to do)
+                flags = utils.Flags(0x12)
+                snd = self.mkpkt(flags=flags)
+                self.send(snd)
+                self.sqnm += 1
+                # self.send(snd)
             return
 
         if self.state == State.SYN_RCVD:
@@ -174,8 +165,15 @@ class TCB(TCBase):
             return
 
         if self.state == State.ESTAB:
-            self.send(packet)
-            return
+            flags = utils.Flags('ack')  # ACK
+            print('flag=', flags)
+
+            snd = self.mkpkt(flags=flags)
+            if packet['flags'] & utils.Flags.flag('fin'):
+                print(f'\n\33[1m\33[31mClosing connection!!\33[0m')
+                self.state = State.CLOSE_WAIT
+                self.close()
+            self.send(snd)
 
     def close(self):
         '''
@@ -185,7 +183,17 @@ class TCB(TCBase):
         ESTAB ------> FIN_WAIT1
         CLOSE_WAIT -> LAST_ACK
         '''
-        pass
+        if self.state == State.CLOSE_WAIT:
+            self.state = State.LAST_ACK
+            snd = self.mkpkt(flags='fin')
+            self.send(snd)
+            # TODO: wait for ack of fin and remove from connections list
+            return
+
+        if self.state == State.ESTAB:
+            self.state = State.FIN_WAIT1
+            snd = self.mkpkt(flags='fin')
+            self.send(snd)
 
     def status(self):
         return self.state
@@ -195,4 +203,11 @@ class TCB(TCBase):
 
     def msg_usr(self):
         pass
+
+    def mkpkt(self, data=b'', flags=0):
+        '''Wrapper for utils.mkkpkt to automatically use objects properties'''
+        if isinstance(flags, int) or isinstance(flags, str):
+            flags = utils.Flags(flags)
+        print('flaaaaag   =    ', flags)
+        return utils.mkpkt(data, self.quad, flags, self.acknm, self.sqnm)
 

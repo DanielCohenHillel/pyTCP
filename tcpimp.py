@@ -74,6 +74,8 @@ except Exception as e:
     tun.close()
 finally:
     print('\n\33[1mExiting but its good :)\33[0m')
+    for conn in conns:
+        conn.close()
     tun.close()
     print('\33[1m', '-'*30, 'Connections', '-'*30, '\33[0m')
     print('\n'.join([str(conn.quad) for conn in conns]))

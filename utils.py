@@ -31,6 +31,12 @@ class Flags:
     flg_opts = ['cwr', 'ece', 'urg', 'ack', 'psh', 'rst', 'syn', 'fin']
 
     def __init__(self, byte):
+        if isinstance(byte, str):
+            byte = Flags.flag(byte)
+        if isinstance(byte, list):
+            if all([isinstance(b, str) for b in byte]):
+                byte = Flags.flag(byte)
+
         for i, flag in enumerate(reversed(Flags.flg_opts)):
             self.__setattr__(flag, 1 << i & byte != 0)
 
@@ -43,7 +49,16 @@ class Flags:
 
     @classmethod
     def flag(cls, name):
-        return 1 << 7-cls.flg_opts.index(name)
+        if isinstance(name, list):
+            try:
+                flags = 0
+                for flag in name:
+                    flags += Flags.flag(flag)
+            except:
+                print('An error occourd parsing the flags')
+                return
+
+        return 0x80 >> cls.flg_opts.index(name)
 
     def byte(self):
         b = sum([1 << i if getattr(self, flag)
@@ -89,10 +104,10 @@ def mkpkt(data: bytes, quad, flags: Flags, acknm=0, sqnm=0, iopts=b'', topts=b''
     iph = iph[:10] + struct.pack('H', ipchksm) + iph[12:]
 
     # -------- layer 4 (TCP) --------
-    # sqnm = 100           # 4 bytes - sequance number
+    # sqnm = 100         # 4 bytes - sequance number
     datof = 0x50         # 4 bit (Data offset) + 3b (rsv=0) + 1b (NS flag = 0)
     tflg = flags.byte()  # 1 byte (ack, cwr, ece, fin, psh, rst, syn, urg)
-    winsz = 0xfaf0       # 2 bytes - window size
+    winsz = 512          # 2 bytes - window size
     urgpnt = 0           # 2 bytes - urgent pointer (if URG flag is set)
 
     # TCP header
