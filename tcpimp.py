@@ -29,15 +29,15 @@ try:
         # Check validity of packet
         if iparse is None:  # Not a valid IPv4 packet
             continue
-        if iparse['prtcl'] != 6:  # TCP protocol
+        if iparse.prtcl != 6:  # TCP protocol
             if surpress:
                 continue
-            print(f'\n\33[1mRecived \33[35m{utils.prtcls[iparse["prtcl"]]}\33[39m packet,'
+            print(f'\n\33[1mRecived \33[35m{utils.prtcls[iparse.prtcl]}\33[39m packet,'
                   ' ignoring...\33[0m (you can use -v to display all IPv4 packets)')
             continue
 
         # IP payload (iclued all of TCP)
-        idata = iparse['data']
+        idata = iparse.data
         # Parse TCP packet
         tcparse = parse.tcp(idata)
 
@@ -45,12 +45,12 @@ try:
         utils.print_pac(iparse, tcparse)
 
         # Make the flags from the packet into a Flags object and print
-        flags = utils.Flags(tcparse["flags"])
+        flags = utils.Flags(tcparse.flags)
         print(flags)
 
         # ------------ Manage TCP connections ---------------
-        quad = tcp.Quad(iparse['srcip'], tcparse['src_port'],
-                        iparse['dstip'], tcparse['dst_port'])
+        quad = tcp.Quad(iparse.srcip, tcparse.src_port,
+                        iparse.dstip, tcparse.dst_port)
 
         # Check if connection already exists, if not, create one
         conn_exists = False

@@ -12,17 +12,17 @@ with open('protocol-numbers-1.csv') as file:
 
 
 def print_pac(iph, tcph):
-    src_port = int.from_bytes(tcph['src_port'], 'big')
-    dst_port = int.from_bytes(tcph['dst_port'], 'big')
+    src_port = int.from_bytes(tcph.src_port, 'big')
+    dst_port = int.from_bytes(tcph.dst_port, 'big')
 
     # Print number bytes of data
-    print(f'\n\33[1m\33[32m{int.from_bytes(iph["len"], "big")}b of data\33[0m')
-    print(f'\33[1mIPv4:\33[0m \33[35m{".".join([str(x) for x in iph["dstip"]])}:{src_port}\33[0m → '
-          f'\33[35m{".".join([str(x) for x in iph["srcip"]])}:{dst_port}\33[0m'
-          f' \33[1mprotocol:\33[0m {iph["prtcl"]}(\33[35m{prtcls[iph["prtcl"]]}\33[0m) '
-          f'\33[1mttl:\33[0m \33[35m{iph["TTL"]}\33[0m')  # print packet info
-    print(f'\33[1mData [{len(iph["data"])}b]:'
-          f'\33[0m {iph["data"].hex()}')
+    print(f'\n\33[1m\33[32m{int.from_bytes(iph.len, "big")}b of data\33[0m')
+    print(f'\33[1mIPv4:\33[0m \33[35m{".".join([str(x) for x in iph.dstip])}:{src_port}\33[0m → '
+          f'\33[35m{".".join([str(x) for x in iph.srcip])}:{dst_port}\33[0m'
+          f' \33[1mprotocol:\33[0m {iph.prtcl}(\33[35m{prtcls[iph.prtcl]}\33[0m) '
+          f'\33[1mttl:\33[0m \33[35m{iph.TTL}\33[0m')  # print packet info
+    print(f'\33[1mData [{len(iph.data)}b]:'
+          f'\33[0m {iph.data.hex()}')
 
     print('\33[1m' + '-'*100 + '\33[0m')
 
@@ -69,11 +69,11 @@ class Flags:
 def mkpkt(data: bytes, quad, flags: Flags, acknm=0, sqnm=0, iopts=b'', topts=b''):
     '''Create a TCP/IP packet from specified parameters'''
     # Quad object to adresses
-    srcip = bytes(quad.dst[0])
-    dstip = bytes(quad.src[0])
+    srcip = bytes(quad.dst.ip)
+    dstip = bytes(quad.src.ip)
 
-    srcp = bytes(quad.dst[1])
-    dstp = bytes(quad.src[1])
+    srcp = bytes(quad.dst.port)
+    dstp = bytes(quad.src.port)
     # -------- layer 3 (IP) --------
     ver = 0x40  # 4 bits - IP version (we use IPv4)
     ihl = 0x05  # 4 bits - Header length - TODO: Calc IHL

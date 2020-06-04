@@ -6,6 +6,7 @@ from enum import Enum
 import abc
 import logging
 import utils
+from typing import NamedTuple
 
 
 class State(Enum):
@@ -22,10 +23,15 @@ class State(Enum):
     TIME_WAIT = 11
 
 
+class Node(NamedTuple):
+    ip:   bytes
+    port: bytes
+
+
 class Quad:
     def __init__(self, src_ip, src_port, dst_ip, dst_port):
-        self.src = (src_ip, src_port)
-        self.dst = (dst_ip, dst_port)
+        self.src = Node(src_ip, src_port)
+        self.dst = Node(dst_ip, dst_port)
 
     def __eq__(self, other):
         return self.src == other.src and self.dst == other.dst
@@ -33,11 +39,11 @@ class Quad:
     def __repr__(self):
         qstr = f'''
             \33[1mSource:
-                \33[1mIP:\33[0m   {'.'.join([str(b) for b in self.src[0]])}
-                \33[1mPort:\33[0m {int.from_bytes(self.src[1], 'big')}
+                \33[1mIP:\33[0m   {'.'.join([str(b) for b in self.src.ip])}
+                \33[1mPort:\33[0m {int.from_bytes(self.src.port, 'big')}
             \33[1mDestenation:\33[0m
-                \33[1mIP:\33[0m   {'.'.join([str(b) for b in self.dst[0]])}
-                \33[1mPort:\33[0m {int.from_bytes(self.dst[1], 'big')}
+                \33[1mIP:\33[0m   {'.'.join([str(b) for b in self.dst.ip])}
+                \33[1mPort:\33[0m {int.from_bytes(self.dst.port, 'big')}
             '''
         return qstr
 
@@ -129,7 +135,7 @@ class TCB(TCBase):
         CLOSING ---> TIME_WAIT
         LAST_ACK --> CLOSED
         '''
-        data = packet['data']
+        data = packet.data
         self.acknm += len(data)
 
         # Print the sent data in ASCII
@@ -146,10 +152,10 @@ class TCB(TCBase):
         #     pass  # TODO: Queue for processing.
 
         if self.state == State.LISTEN:
-            if packet['flags'] == utils.Flags.flag('syn'):
+            if packet.flags == utils.Flags.flag('syn'):
                 # Send SYN,ACK
                 self.state = State.SYN_RCVD
-                self.acknm = int.from_bytes(packet['seq_num'], 'big') + 1
+                self.acknm = int.from_bytes(packet.seq_num, 'big') + 1
                 # SYN, ACK (TODO: make simpler to do)
                 flags = utils.Flags(0x12)
                 snd = self.mkpkt(flags=flags)
@@ -159,7 +165,7 @@ class TCB(TCBase):
             return
 
         if self.state == State.SYN_RCVD:
-            if packet['flags'] == utils.Flags.flag('ack'):
+            if packet.flags == utils.Flags.flag('ack'):
                 self.state = State.ESTAB
                 print(f'\n\33[1m\33[32mCnnection Established!!\33[0m')
             return
@@ -169,7 +175,7 @@ class TCB(TCBase):
             print('flag=', flags)
 
             snd = self.mkpkt(flags=flags)
-            if packet['flags'] & utils.Flags.flag('fin'):
+            if packet.flags & utils.Flags.flag('fin'):
                 print(f'\n\33[1m\33[31mClosing connection!!\33[0m')
                 self.state = State.CLOSE_WAIT
                 self.close()
