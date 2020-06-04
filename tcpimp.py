@@ -61,7 +61,7 @@ try:
                 conn = con
                 break
         if not conn_exists:  # Start a new connection
-            conn = tcp.TCB(tun)
+            conn = tcp.Connection(tun)
             conn.open(quad)
             conns.append(conn)  # Add connection to connections list
 

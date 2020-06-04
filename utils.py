@@ -12,6 +12,13 @@ with open('protocol-numbers-1.csv') as file:
 
 
 def print_pac(iph, tcph):
+    '''
+    Print package in a super pretty way.
+
+    Args:
+        iph (IPPacket): Parsed IPv4 segment
+        tcph (TCPPacket): Parsed TCP segment (header + data)
+    '''
     src_port = int.from_bytes(tcph.src_port, 'big')
     dst_port = int.from_bytes(tcph.dst_port, 'big')
 
@@ -28,9 +35,20 @@ def print_pac(iph, tcph):
 
 
 class Flags:
+    '''Represent TCP flags in an easy to use form'''
+
     flg_opts = ['cwr', 'ece', 'urg', 'ack', 'psh', 'rst', 'syn', 'fin']
 
     def __init__(self, byte):
+        '''
+        Create flags object.
+
+        Args:
+            byte (int, str, list(str)): The flags themselves. If int uses the
+            binary of the int to get the flags. If string it uses the string
+            of the flags corresponding to that name, if list of strings it
+            does the same thing but for multiple flags.
+        '''
         if isinstance(byte, str):
             byte = Flags.flag(byte)
         if isinstance(byte, list):
@@ -45,10 +63,12 @@ class Flags:
         return fstr
 
     def get_flgs(self):
+        '''Get a list of the names of all the flags in an instance of this obj'''
         return list(filter(lambda x: x if getattr(self, x) else None, Flags.flg_opts))
 
     @classmethod
     def flag(cls, name):
+        '''@classmethod Get flag int from flag name'''
         if isinstance(name, list):
             try:
                 flags = 0
@@ -61,13 +81,27 @@ class Flags:
         return 0x80 >> cls.flg_opts.index(name)
 
     def byte(self):
+        '''Get the byte representing all the flags in an instance of the obj'''
         b = sum([1 << i if getattr(self, flag)
                  else 0 for i, flag in enumerate(reversed(Flags.flg_opts))])
         return b
 
 
 def mkpkt(data: bytes, quad, flags: Flags, acknm=0, sqnm=0, iopts=b'', topts=b''):
-    '''Create a TCP/IP packet from specified parameters'''
+    '''
+    Create a TCP/IP packet from specified parameters
+
+    Args:
+        data (bytes):  Data after the TCP header and options
+        quad (Quad):   Connection addresses of the packet
+        flags (Flags): The TCP flags of the packet
+        acknm (int):   The acknowledgement number of the TCP header
+        sqnm (int):    The sequance number of the TCP header
+        iopts (bytes): The IP header options
+        topts (bytes): The TCP header options
+
+    Returns (bytes): Full TCP/IP packet
+    '''
     # Quad object to adresses
     srcip = bytes(quad.dst.ip)
     dstip = bytes(quad.src.ip)
@@ -145,6 +179,14 @@ def mkpkt(data: bytes, quad, flags: Flags, acknm=0, sqnm=0, iopts=b'', topts=b''
 
 
 def calc_checksum(data: bytes):
+    '''
+    Calculate the checksum of given bytes.
+
+    Args:
+        data (bytes): The bytes to calculate the checksum of
+
+    Returns (int): The checksum of the given data bytes
+    '''
     # Check that the data is of valid length
     if len(data) % 2 != 0:
         data += b'\0'

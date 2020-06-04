@@ -3,6 +3,7 @@ from typing import NamedTuple
 
 
 class IPPacket(NamedTuple):
+    '''Structure of an IP packet (NamedTuple for easy access)'''
     ver:    int
     IHL:    int
     typ:    int
@@ -19,6 +20,7 @@ class IPPacket(NamedTuple):
 
 
 class TCPPacket(NamedTuple):
+    '''Structure of a TCP packet (NamedTuple for easy access)'''
     src_port: bytes
     dst_port: bytes
     seq_num:  bytes
@@ -33,7 +35,8 @@ class TCPPacket(NamedTuple):
     data:     bytes
 
 
-def ip(packet: bytes) -> dict:
+def ip(packet: bytes) -> IPPacket:
+    '''Parse IP packet from given bytes of the packet'''
     if len(packet) < 20:  # Packet can't be smaller than minimum header size
         print('Not a valid IP packet')
         return
@@ -77,38 +80,30 @@ def ip(packet: bytes) -> dict:
 
 
 def tcp(packet: bytes) -> dict:
-    '''
-    Parse TCP packets
-    '''
+    '''Parse TCP packet from given bytes of the packet'''
+    if len(packet) < 20:
+        print(f"\n\33[1m\33[31mError:\33[0m Packet length {len(packet)}b can't"
+              "be smaller than the minimum of 20 bytes.\n\33[1mCorrupted packet.\33[0m")
+        return
     dat_off = packet[12] >> 4
+    if dat_off < 5:
+        print(f"\n\33[1m\33[31mError:\33[0m Header length {dat_off*4}b is smaller"
+              " than the minimum of 20 bytes.\n\33[1mCorrupted packet.\33[0m")
+
     parpack = TCPPacket(
-        packet[0:2],
-        packet[2:4],
-        packet[4:8],
-        packet[8:12],
-        dat_off,
-        packet[12] & 0b1111,
-        packet[13],  # Does not include NS flag!!
-        packet[14:16],
-        packet[16:18],
-        packet[18:20],
-        packet[20:dat_off*4],
-        packet[dat_off*4:]
+        packet[0:2],           # Source port
+        packet[2:4],           # Destenation port
+        packet[4:8],           # Sequence number
+        packet[8:12],          # Acknewledgement number
+        dat_off,               # Data offset
+        packet[12] & 0xf,      # Reserved 0's and CWR flag
+        packet[13],            # Flags (no CWR)
+        packet[14:16],         # Window size
+        packet[16:18],         # Checksum
+        packet[18:20],         # Urgent pointer
+        packet[20:dat_off*4],  # TCP options
+        packet[dat_off*4:]     # Actuall data
     )
-    # parpack = {
-    #     'src_port': packet[0:2],
-    #     'dst_port': packet[2:4],
-    #     'seq_num': packet[4:8],
-    #     'ack_num': packet[8:12],
-    #     'dat_off': packet[12] >> 4,
-    #     'rsrvd': packet[12] & 0b1111,
-    #     'flags': packet[13],  # Does not include NS flag!!
-    #     'win_size': packet[14:16],
-    #     'chk_sum': packet[16:18],
-    #     'urg_pnt': packet[18:20]
-    # }
 
     # TODO: Check the check sum
-    # parpack['opts'] = packet[20:dat_off]
-    # parpack['data'] = packet[dat_off:]
     return parpack

@@ -10,6 +10,7 @@ from typing import NamedTuple
 
 
 class State(Enum):
+    '''The TCP states as defined in the RFC'''
     CLOSED = 1
     LISTEN = 2
     ESTAB = 3
@@ -24,11 +25,14 @@ class State(Enum):
 
 
 class Node(NamedTuple):
+    '''ip-port pair, used to identify one side of the connection'''
     ip:   bytes
     port: bytes
 
 
 class Quad:
+    '''Holds information on both connection ip addresses (src/dst) and ports'''
+
     def __init__(self, src_ip, src_port, dst_ip, dst_port):
         self.src = Node(src_ip, src_port)
         self.dst = Node(dst_ip, dst_port)
@@ -48,7 +52,9 @@ class Quad:
         return qstr
 
 
-class TCBase(abc.ABC):
+class ConnectionBase(abc.ABC):
+    '''Base virtual class for a TCP connection, need to inherite and implement'''
+
     @abc.abstractmethod
     def __init__(self):
         pass
@@ -86,8 +92,14 @@ class TCBase(abc.ABC):
     # !!! TO BE ADDED IN THE FUTUTE IF I EVER GET TO IT MAYBE !!!
 
 
-class TCB(TCBase):
+class Connection(ConnectionBase):
+    '''Class to hold TCP connection details with a single destenation'''
+
     def __init__(self, tun):
+        '''
+        Args:
+            tun (Tun): An open tun device (Tun oobject from pytuntap.py)
+        '''
         self.state = State.LISTEN
         self.quad = None
         self.tun = tun  # TODO: change this, should combine tcpimp.py with tcp.py
@@ -95,10 +107,7 @@ class TCB(TCBase):
         self.acknm = 0
 
     def open(self, quad):
-        '''
-        CLOSED -> LISTEN <---------------------- *
-        CLOSED -> SYN_SENT
-        '''
+        '''Open a connection as per the RFC specification'''
         if self.state == State.CLOSED:
             self.quad = quad
         if self.state == State.LISTEN:
@@ -107,33 +116,14 @@ class TCB(TCBase):
             print("\33[31m\33[1mError:\33[0m\33[1m connection already exists.")
 
     def send(self, packet):
-        '''
-        CLOSED -----> SYN_SENT
-        LISTEN -----> SYN_SENT <--------------- *
-        LISTEN -----> SYN_RCVD <--------------- *
-        SYN_SENT ---> SYN_RCVD
-        SYN_SENT ---> ESTAB <------------------ *
-        SYN_RCVD ---> FIN_WAIT1
-        ESTAB ------> CLOSE_WAIT
-        ESTAB ------> FIN_WAIT1
-        CLOSE_WAIT -> LAST_ACK
-        FIN_WAIT1 --> CLOSING
-        FIN_WAIT2 --> TIME_WAIT
-        '''
+        '''Easily send using this connection tun object'''
         self.tun.write(packet)
 
     def recv(self, packet):
         '''
-        LISTEN ----> SYN_RCVD <---------------- *
-        SYN_SENT --> ESTAB <------------------- *
-        SYN_RCVD --> ESTAB <------------------- *
-        SYN_SENT --> SYN_RCVD
-        ESTAB -----> CLOSE_WAIT
-        FIN_WAIT1 -> FIN_WAIT2
-        FIN_WAIT1 -> CLOSING
-        FIN_WAIT2 -> TIME_WAIT
-        CLOSING ---> TIME_WAIT
-        LAST_ACK --> CLOSED
+        Handels all recived packets of this connection as per the RFC specification
+        Args:
+            packet (TCPPacket): A TCP packet of this connection
         '''
         data = packet.data
         self.acknm += len(data)
@@ -142,14 +132,10 @@ class TCB(TCBase):
         if len(data) != 0:
             print("\33[1mThe internet said:\33[33m ",
                   "".join([chr(d) for d in data]) + '\33[0m')
-        # print('\33[1m~~ RECV ~~\33[1m')
+
         if self.state == State.CLOSED:
             print("\33[31m\33[1mError:\33[0m\33[1m connection doesn't exist.")
             return
-        # if self.state in [State.LISTEN, State.SYN_SENT, State.SYN_RCVD]:
-        #     pass  # TODO: Queue for processing. (read from tun device)
-        # if self.state in [State.ESTAB, State.FIN_WAIT1, State.FIN_WAIT2]:
-        #     pass  # TODO: Queue for processing.
 
         if self.state == State.LISTEN:
             if packet.flags == utils.Flags.flag('syn'):
@@ -182,13 +168,7 @@ class TCB(TCBase):
             self.send(snd)
 
     def close(self):
-        '''
-        LISTEN -----> CLOSED
-        SYN_SENT ---> CLOSED
-        SYN_RCVD ---> FIN_WAIT1
-        ESTAB ------> FIN_WAIT1
-        CLOSE_WAIT -> LAST_ACK
-        '''
+        '''Close a connection proberly as per the RFC specification (snd fin)'''
         if self.state == State.CLOSE_WAIT:
             self.state = State.LAST_ACK
             snd = self.mkpkt(flags='fin')
@@ -202,18 +182,19 @@ class TCB(TCBase):
             self.send(snd)
 
     def status(self):
+        '''Get the status of the connection as per the RFC specification'''
         return self.state
 
     def abort(self):
+        '''Abort the connection (RST flag) as per the RFC specification'''
         pass
 
     def msg_usr(self):
         pass
 
     def mkpkt(self, data=b'', flags=0):
-        '''Wrapper for utils.mkkpkt to automatically use objects properties'''
+        '''Wrapper for utils.mkkpkt to automatically use this object's properties'''
         if isinstance(flags, int) or isinstance(flags, str):
             flags = utils.Flags(flags)
-        print('flaaaaag   =    ', flags)
         return utils.mkpkt(data, self.quad, flags, self.acknm, self.sqnm)
 
