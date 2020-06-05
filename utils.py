@@ -1,6 +1,7 @@
 import re
 import struct
 import array
+from enum import Enum
 
 # Table of protocols number
 prtcls = []
@@ -197,3 +198,21 @@ def calc_checksum(data: bytes):
     res += res >> 16
     # Return one's complement
     return (~res) & 0xffff
+
+
+class print_type(Enum):
+    error = 0,
+    green = 1,
+    red = 2,
+    bold = 3
+
+
+def pprint(msg: str, p_type=print_type.error):
+    if p_type == print_type.error:
+        print('\33[1m\33[31mError: \33[0m\33[1m' + msg + '\33[0m')
+    if p_type == print_type.green:
+        print('\33[1m\33[32m' + msg + '\33[0m')
+    if p_type == print_type.red:
+        print('\33[1m\33[31m' + msg + '\33[0m')
+    if p_type == print_type.bold:
+        print('\33[1m' + msg + '\33[0m')
